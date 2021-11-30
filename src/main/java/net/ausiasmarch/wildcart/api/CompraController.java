@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -137,21 +139,34 @@ public class CompraController {
             }
         }
     }
-
+    
     @GetMapping("/page")
-    public ResponseEntity<Page<CompraEntity>> getPage(@PageableDefault(page = 0, size = 10, direction = Sort.Direction.ASC) Pageable oPageable) {
+    public ResponseEntity<?> getPage(
+            @PageableDefault(page = 0, size = 5, direction = Direction.ASC) Pageable oPageable,
+            @RequestParam(required = false) Long filtertype,
+            @RequestParam(required = false) String filter) {
 
         UsuarioEntity oUsuarioEntity = (UsuarioEntity) oHttpSession.getAttribute("usuario");
+
         if (oUsuarioEntity == null) {
             return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
-        } else if (oUsuarioEntity.getTipousuario().getId() == 1) {
-            Page<CompraEntity> oPage = null;
-            oPage = oCompraRepository.findAll(oPageable);
-            return new ResponseEntity<>(oPage, HttpStatus.OK);
         } else {
-            Page<CompraEntity> oPage = null;
-            oPage = oCompraRepository.findByCompraIdUsuarioPage(oUsuarioEntity.getId(), oPageable);
-            return new ResponseEntity<>(oPage, HttpStatus.OK);
+
+            if (oUsuarioEntity.getTipousuario().getId() == 1) {
+                Page<CompraEntity> oPage;
+                if (filtertype != null) {
+                    oPage = oCompraRepository.findByFacturaIdAndIdIgnoreCaseContainingOrCantidadIgnoreCaseContainingOrPrecioIgnoreCaseContainingOrFechaIgnoreCaseContaining(
+                            filtertype,
+                            filter == null ? "" : filter, filter == null ? "" : filter, filter == null ? "" : filter, filter == null ? "" : filter, oPageable);
+                } else {
+                    oPage = oCompraRepository.findByIdIgnoreCaseContainingOrCantidadIgnoreCaseContainingOrPrecioIgnoreCaseContainingOrFechaIgnoreCaseContaining(
+                            filter == null ? "" : filter, filter == null ? "" : filter, filter == null ? "" : filter, filter == null ? "" : filter, oPageable);
+                }
+
+                return new ResponseEntity<Page<CompraEntity>>(oPage, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
+            }
         }
     }
 
